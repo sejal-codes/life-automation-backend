@@ -1,9 +1,13 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-COPY . /app
+
+COPY requirements.txt .
 
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Only copy main.py — this forces Cloud Run to use the correct app
+COPY main.py .
 
 EXPOSE 8080
 
