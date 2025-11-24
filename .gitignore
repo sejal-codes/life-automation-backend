@@ -1,6 +1,1 @@
-google-cloud-sdk/
-google-cloud-cli-*.tar.gz
-__pycache__
-*.pyc
-.git
-.envgoogle-cloud-sdk/
+content_above
