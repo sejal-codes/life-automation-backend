@@ -1,29 +1,46 @@
-from flask import Flask, request, jsonify
-import datetime
+from fastapi import FastAPI
+from pydantic import BaseModel
+import google.generativeai as genai
+import os
+from datetime import datetime
 
-app = Flask(__name__)
+app = FastAPI()
 
-@app.route("/")
+# Load Gemini Key
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+
+class TaskRequest(BaseModel):
+    tasks: list[str]
+    mood: str
+
+@app.get("/")
 def home():
-    return jsonify({"status": "running", "message": "Life Automation API working!"})
+    return {"message": "Life Automation API Active"}
 
-@app.route("/daily-plan", methods=["POST"])
-def daily_plan():
-    data = request.get_json()
+@app.get("/status")
+def status():
+    return {"status": "ok"}
 
-    tasks = data.get("tasks", [])
-    mood = data.get("mood", "neutral")
+@app.post("/tasks")
+def generate_plan(req: TaskRequest):
+    tasks_list = ", ".join(req.tasks)
+    prompt = f"""
+    Generate a clear, structured day plan based on this mood and tasks:
+    Mood: {req.mood}
+    Tasks: {tasks_list}
 
-    now = datetime.datetime.now().strftime("%I:%M %p")
+    Make it motivational, concise, and actionable.
+    """
 
-    response = {
-        "generated_at": now,
-        "tasks_received": tasks,
-        "plan": f"Your mood is {mood}. Start with the most important task: '{tasks[0]}'"
-        if tasks else "No tasks provided."
-    }
+    try:
+        model="models/gemini-1.5-flash"
 
-    return jsonify(response)
+        response = model.generate_content(prompt)
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+        return {
+            "generated_at": datetime.now().strftime("%I:%M %p"),
+            "plan": response.text
+        }
+
+    except Exception as e:
+        return {"error": str(e)}
