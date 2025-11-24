@@ -1,46 +1,42 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import google.generativeai as genai
-import os
-from datetime import datetime
+from flask import Flask, request, jsonify
+from google import genai
 
-app = FastAPI()
+app = Flask(__name__)
 
-# Load Gemini Key
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# Initialize Google GenAI client
+client = genai.Client()
 
-class TaskRequest(BaseModel):
-    tasks: list[str]
-    mood: str
-
-@app.get("/")
-def home():
-    return {"message": "Life Automation API Active"}
-
-@app.get("/status")
+@app.route("/status", methods=["GET"])
 def status():
-    return {"status": "ok"}
+    return jsonify({"status": "ok"})
 
-@app.post("/tasks")
-def generate_plan(req: TaskRequest):
-    tasks_list = ", ".join(req.tasks)
-    prompt = f"""
-    Generate a clear, structured day plan based on this mood and tasks:
-    Mood: {req.mood}
-    Tasks: {tasks_list}
 
-    Make it motivational, concise, and actionable.
-    """
-
+@app.route("/tasks", methods=["POST"])
+def generate_plan():
     try:
-        model="models/gemini-1.5-flash"
+        data = request.get_json()
+        tasks = data.get("tasks", [])
+        mood = data.get("mood", "neutral")
 
-        response = model.generate_content(prompt)
+        prompt = f"""
+        You are Life Automation AI.
+        The user's mood is: {mood}.
+        These are the tasks: {tasks}.
 
-        return {
-            "generated_at": datetime.now().strftime("%I:%M %p"),
-            "plan": response.text
-        }
+        Generate a short, motivating, structured plan for the day.
+        """
+
+        # Correct API call for latest Gemini models
+        response = client.models.generate_content(
+            model="models/gemini-1.5-flash",
+            contents=prompt
+        )
+
+        ai_output = response.text
+
+        return jsonify({
+            "generated_plan": ai_output
+        })
 
     except Exception as e:
-        return {"error": str(e)}
+        return jsonify({"err
